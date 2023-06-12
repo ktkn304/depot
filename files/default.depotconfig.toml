@@ -1,0 +1,33 @@
+# depot config file
+[core]
+root = "${HOME}/depot/"
+
+[shell]
+path = "/bin/sh"
+args = [ "-c" ]
+
+[parse.default]
+scheme = "file"
+host = "localhost"
+
+[resolve]
+path = '${DEPOT_REMOTE_HOST}/$(path_segment DEPOT_REMOTE_PATH -2)/${DEPOT_REMOTE_FILENAME_WITHOUT_EXTENSION}'
+
+[subcommands]
+get.command = [ 'not-supported' ]
+get.overloads.git.command = 'mkdir -p "$DEPOT_LOCAL_PATH"; git clone "$DEPOT_REMOTE_URL" "$DEPOT_LOCAL_PATH"'
+create.command = [ 'not-supported' ]
+create.overloads.git.command = 'mkdir -p "$DEPOT_LOCAL_PATH"; cd "$DEPOT_LOCAL_PATH"; git init; git remote add origin "$DEPOT_REMOTE_URL"'
+
+[subcommands.list.project]
+condition = [
+    { mode = 'exact', pattern = [ 'glob', '*/*/*' ] },
+]
+excludes = [ '**/.DS_Store' ]
+
+[subcommands.list.fields]
+summary = [ 'shell', 'test -e "${DEPOT_LOCAL_PATH}/.depot_summary" && head -n1 "${DEPOT_LOCAL_PATH}/.depot_summary"' ]
+
+[[overloads]]
+name = 'git'
+patterns = ['git://**', 'https://**']
