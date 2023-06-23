@@ -15,9 +15,9 @@ path = '${DEPOT_REMOTE_HOST}/$(path_segment DEPOT_REMOTE_PATH -2)/${DEPOT_REMOTE
 
 [subcommands]
 get.command = [ 'not-supported' ]
-get.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'git clone "$DEPOT_REMOTE_URL" "$DEPOT_LOCAL_PATH"', 'echo "$DEPOT_LOCAL_PATH"' ]
+get.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'git clone "$DEPOT_REMOTE_RAW" "$DEPOT_LOCAL_PATH"', 'echo "$DEPOT_LOCAL_PATH"' ]
 create.command = [ 'not-supported' ]
-create.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'cd "$DEPOT_LOCAL_PATH" && git init && git remote add origin "$DEPOT_REMOTE_URL"', 'echo "$DEPOT_LOCAL_PATH"' ]
+create.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'cd "$DEPOT_LOCAL_PATH" && git init && git remote add origin "$DEPOT_REMOTE_RAW"', 'echo "$DEPOT_LOCAL_PATH"' ]
 
 [subcommands.list.project]
 condition = [
