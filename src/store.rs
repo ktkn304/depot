@@ -5,6 +5,9 @@ use url::Url;
 pub trait Store {
     fn get(&self, key: &str) -> Option<Cow<String>>;
     fn set(&mut self, key: String, value: String);
+    fn set_remote_raw(&mut self, remote_url_raw: &str) {
+        self.set("DEPOT_REMOTE_RAW".to_owned(), remote_url_raw.to_owned());
+    }
     fn set_remote_url(&mut self, remote_url: &Url) {
         self.set("DEPOT_REMOTE_URL".to_owned(), remote_url.to_string());
         self.set("DEPOT_REMOTE_SCHEME".to_owned(), remote_url.scheme().to_owned());

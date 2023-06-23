@@ -15,6 +15,7 @@ impl super::BuiltInCommand for Subcommand {
         let overload = config.overloads.find_overload_name(&self.address)?;
         let cmdgen = config.shell.compile(&store)?;
         let remote_url = config.parse.parse_url(&self.address)?;
+        store.set_remote_raw(&self.address);
         store.set_remote_url(&remote_url);
 
         let root_path = config.core.root.expand(&cmdgen, &store)?;
