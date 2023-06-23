@@ -31,7 +31,7 @@ pub struct ParseDefault {
 
 impl ParseDefault {
     fn default_scheme() -> String {
-        "file".to_owned()
+        "depot".to_owned()
     }
     fn default_host() -> String {
         "localhost".to_owned()

@@ -7,7 +7,7 @@ path = "/bin/sh"
 args = [ "-c" ]
 
 [parse.default]
-scheme = "file"
+scheme = "depot"
 host = "localhost"
 
 [resolve]
