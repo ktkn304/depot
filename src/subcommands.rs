@@ -6,6 +6,7 @@ mod list;
 mod get;
 mod create;
 mod resolve;
+mod get_overload;
 mod external;
 
 pub trait BuiltInCommand {
@@ -17,6 +18,7 @@ pub enum Subcommands {
     Root(root::Subcommand),
     List(list::Subcommand),
     Resolve(resolve::Subcommand),
+    GetOverload(get_overload::Subcommand),
     Get(get::Subcommand),
     Create(create::Subcommand),
 
@@ -33,6 +35,9 @@ pub fn run(config: &Config, command: Subcommands) -> i32 {
             return run_builtin_command(&cmd, config);
         }
         Subcommands::Resolve(cmd) => {
+            return run_builtin_command(&cmd, config);
+        }
+        Subcommands::GetOverload(cmd) => {
             return run_builtin_command(&cmd, config);
         }
         Subcommands::Get(cmd) => {
