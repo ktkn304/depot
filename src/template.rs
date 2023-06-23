@@ -6,6 +6,7 @@ fn call_func<T: Store>(store: &T, args: &Vec<&str>) -> GenericResult<String> {
             let var_name = *args.get(1).ok_or(CustomError::new("too few arguments"))?;
             let index = i32::from_str_radix(*args.get(2).ok_or(CustomError::new("too few arguments"))?, 10)?;
             if let Some(var) = store.get(var_name) {
+                let var = if var.starts_with('/') { &var[1..] } else { &var[0..] };
                 let splitted: Vec<&str> = var.split("/").collect();
                 let index = if index < 0 { splitted.len() as i32 + index } else { index };
                 if index < 0 || splitted.len() <= index as usize {
