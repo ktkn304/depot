@@ -5,6 +5,7 @@ use crate::utils::{GenericResult, StringMatcher, Compilable};
 
 pub enum Pattern {
     Glob(String),
+    StartsWith(String),
 }
 impl<'de> Deserialize<'de> for Pattern {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -38,6 +39,12 @@ impl<'de> Deserialize<'de> for Pattern {
                             .ok_or_else(|| de::Error::invalid_length(1, &self))?;
                         Ok(Self::Value::Glob(pattern))
                     }
+                    "starts-with" => {
+                        let pattern = seq
+                            .next_element::<String>()?
+                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
+                        Ok(Self::Value::StartsWith(pattern))
+                    }
                     _ => Err(de::Error::invalid_value(Unexpected::Str(&method), &self)),
                 }
             }
@@ -56,6 +63,9 @@ impl Compilable<Box<dyn StringMatcher>> for Pattern {
                     .or_else(|err| { eprintln!("{}", err); Err(err) })?;
                 Ok(Box::new(GlobMatcher::new(glob.compile_matcher())))
             }
+            Pattern::StartsWith(pattern) => {
+                Ok(Box::new(StartsWithMatcher::new(pattern.to_owned())))
+            }
         }
     }
 }
@@ -73,6 +83,22 @@ impl GlobMatcher {
 impl StringMatcher for GlobMatcher {
     fn is_match(&self, str: &str) -> bool {
         self.glob_matcher.is_match(str)
+    }
+}
+
+pub struct StartsWithMatcher {
+    pattern: String,
+}
+impl StartsWithMatcher {
+    fn new(pattern: String) -> Self {
+        Self {
+            pattern,
+        }
+    }
+}
+impl StringMatcher for StartsWithMatcher {
+    fn is_match(&self, str: &str) -> bool {
+        str.starts_with(&self.pattern)
     }
 }
 
