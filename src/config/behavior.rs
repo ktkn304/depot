@@ -5,7 +5,7 @@ use crate::{utils::{GenericResult, CommandGenerator}, store::Store, template};
 
 pub enum Behavior {
     Template(String),
-    Shell(String),
+    Shell(Vec<String>),
     NotSupported,
 }
 impl Default for Behavior {
@@ -30,14 +30,14 @@ impl<'de> Deserialize<'de> for Behavior {
             where
                 E: de::Error,
             {
-                Ok(Self::Value::Shell(v.to_owned()))
+                Ok(Self::Value::Shell(vec![v.to_owned()]))
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
                 where
                     E: de::Error,
             {
-                Ok(Self::Value::Shell(v))
+                Ok(Self::Value::Shell(vec![v]))
             }
 
             fn visit_seq<V>(self, mut seq: V) -> Result<Self::Value, V::Error>
@@ -55,10 +55,14 @@ impl<'de> Deserialize<'de> for Behavior {
                         Ok(Self::Value::Template(pattern))
                     }
                     "shell" => {
-                        let command = seq
-                            .next_element::<String>()?
-                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-                        Ok(Self::Value::Shell(command))
+                        let mut commands = Vec::<String>::new();
+                        while let Some(command) = seq.next_element::<String>()? {
+                            commands.push(command);
+                        }
+                        if commands.len() < 1 {
+                            return Err(de::Error::invalid_length(1, &self));
+                        }
+                        Ok(Self::Value::Shell(commands))
                     }
                     "not-supported" => Ok(Self::Value::NotSupported),
                     _ => Err(de::Error::invalid_value(Unexpected::Str(&method), &self)),
@@ -77,13 +81,18 @@ impl Behavior {
         Ok(0)
     }
 
-    fn execute_shell<T: CommandGenerator>(cmdgen: &T, command: &str) -> GenericResult<i32> {
-        let code = cmdgen.generate()
-            .arg(command)
-            .spawn()?
-            .wait()?
-            .code().unwrap_or(0);
-        Ok(code)
+    fn execute_shell<T: CommandGenerator>(cmdgen: &T, commands: &Vec<String>) -> GenericResult<i32> {
+        let mut last_code: i32 = 0;
+        for command in commands {
+            last_code = cmdgen.generate()
+                .arg(command)
+                .status()?
+                .code().unwrap_or(0);
+            if last_code != 0 {
+                break;
+            }
+        }
+        Ok(last_code)
     }
 
     fn execute_not_supported() -> GenericResult<i32> {
@@ -94,7 +103,7 @@ impl Behavior {
     pub fn execute<Tc: CommandGenerator, Ts: Store>(&self, cmdgen: &Tc, store: &Ts) -> GenericResult<i32> {
         match self {
             Behavior::Template(template) => Self::execute_template(store, template),
-            Behavior::Shell(command) => Self::execute_shell(cmdgen, command),
+            Behavior::Shell(commands) => Self::execute_shell(cmdgen, commands),
             Behavior::NotSupported => Self::execute_not_supported(),
         }
     }

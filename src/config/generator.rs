@@ -1,10 +1,12 @@
+use std::fmt::Write;
+
 use crate::{store::Store, utils::{GenericResult, CommandGenerator}, template};
 use serde::{Deserialize, de::{Visitor, SeqAccess, self, Unexpected}};
 
 pub enum Generator {
     String(String),
     Template(String),
-    Shell(String),
+    Shell(Vec<String>),
 }
 impl<'de> Deserialize<'de> for Generator {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -53,10 +55,14 @@ impl<'de> Deserialize<'de> for Generator {
                         Ok(Self::Value::Template(pattern))
                     },
                     "shell" => {
-                        let command = seq
-                            .next_element::<String>()?
-                            .ok_or_else(|| de::Error::invalid_length(1, &self))?;
-                        Ok(Self::Value::Shell(command))
+                        let mut commands = Vec::<String>::new();
+                        while let Some(command) = seq.next_element::<String>()? {
+                            commands.push(command);
+                        }
+                        if commands.len() < 1 {
+                            return Err(de::Error::invalid_length(1, &self));
+                        }
+                        Ok(Self::Value::Shell(commands))
                     },
                     _ => Err(de::Error::invalid_value(Unexpected::Str(&method), &self)),
                 }
@@ -75,11 +81,20 @@ impl Generator {
         Ok(template::expand_template(store, template))
     }
 
-    fn expand_shell<T: CommandGenerator>(cmdgen: &T, command: &str) -> GenericResult<String> {
-        let output = cmdgen.generate()
-            .arg(command)
-            .output()?;
-        Ok(std::str::from_utf8(&output.stdout)?.to_owned())
+    fn execute_shell<T: CommandGenerator>(cmdgen: &T, commands: &Vec<String>) -> GenericResult<String> {
+        let mut buffer = String::new();
+        for command in commands {
+            let output = cmdgen.generate()
+                .arg(command)
+                .output()?;
+            let code = output.status.code().unwrap_or(0);
+            buffer.write_str(std::str::from_utf8(&output.stdout)?)?;
+
+            if code != 0 {
+                break;
+            }
+        }
+        Ok(buffer)
     }
 
     pub fn expand_without_shell<T: Store>(&self, store: &T) -> GenericResult<String> {
@@ -94,7 +109,7 @@ impl Generator {
         match self {
             Generator::String(value) => Self::expand_string(value),
             Generator::Template(template) => Self::expand_template(store, template),
-            Generator::Shell(command) => Self::expand_shell(cmdgen, command),
+            Generator::Shell(commands) => Self::execute_shell(cmdgen, commands),
         }
     }
 }
