@@ -4,6 +4,8 @@ use crate::config::generator::Generator;
 use crate::store::{EnvironmentStore, Store};
 use crate::utils::{self, GenericResult};
 
+pub const ABOUT: &str = "get stored directory path from url";
+
 #[derive(Args)]
 pub struct Subcommand {
     #[clap(short, long)]
@@ -11,7 +13,7 @@ pub struct Subcommand {
     address: String,
 }
 
-impl super::BuiltInCommand for Subcommand {
+impl super::Subcommand for Subcommand {
     fn run(&self, config: &Config) -> GenericResult<i32> {
         let mut store = EnvironmentStore::new();
         let cmdgen = config.shell.compile(&store)?;

@@ -8,6 +8,8 @@ use crate::config::Config;
 use crate::store::{EnvironmentStore, Store};
 use crate::utils::{GenericResult, StringMatcher, DirectoryMatcher, Compilable, CommandGenerator};
 
+pub const ABOUT: &str = "list managed directory";
+
 #[derive(Args)]
 pub struct Subcommand {
     #[clap(short, long, use_value_delimiter = true, default_values_t = [ "path".to_owned() ])]
@@ -132,7 +134,7 @@ impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
     }
 }
 
-impl super::BuiltInCommand for Subcommand {
+impl super::Subcommand for Subcommand {
     fn run(&self, config: &Config) -> GenericResult<i32> {
         let mut store = EnvironmentStore::new();
         let cmdgen = config.shell.compile(&store)?;

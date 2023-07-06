@@ -9,52 +9,66 @@ mod resolve;
 mod get_overload;
 mod external;
 
-pub trait BuiltInCommand {
+pub trait Subcommand {
     fn run(&self, config: &Config) -> GenericResult<i32>;
 }
 
-#[derive(clap::Subcommand)]
-pub enum Subcommands {
-    Root(root::Subcommand),
-    List(list::Subcommand),
-    Resolve(resolve::Subcommand),
-    GetOverload(get_overload::Subcommand),
-    Get(get::Subcommand),
-    Create(create::Subcommand),
+macro_rules! as_item {
+    ($i:item) => { $i };
+}
 
-    #[clap(external_subcommand)]
-    External(Vec<String>),
+macro_rules! define_subcommands_enum {
+    ($(($name:ident, $mod:tt);)+) => {
+        as_item! {
+            #[derive(clap::Subcommand)]
+            pub enum Subcommands {
+                $(
+                    #[clap(about = $mod::ABOUT)]
+                    $name($mod::Subcommand),
+                )+
+                #[clap(external_subcommand)]
+                External(Vec<String>),
+            }
+        }
+    };
+}
+
+macro_rules! define_subcommands_run {
+    ($(($name:ident, $mod:tt);)+) => {
+        fn run_subcommand(config: &Config, command: Subcommands) -> GenericResult<i32> {
+            match command {
+                $(
+                    Subcommands::$name(cmd) => {
+                        cmd.run(config)
+                    }
+                )+
+                Subcommands::External(args) => {
+                    let cmd = external::Subcommand { args: args };
+                    cmd.run(config)
+                }
+            }
+        }
+    };
+}
+
+macro_rules! define_subcommands {
+    ($(($name:ident, $mod:tt);)+) => (
+        define_subcommands_enum!($(($name, $mod);)+);
+        define_subcommands_run!($(($name, $mod);)+);
+    );
+}
+
+define_subcommands!{
+    (Root, root);
+    (List, list);
+    (Resolve, resolve);
+    (GetOverload, get_overload);
+    (Get, get);
+    (Create, create);
 }
 
 pub fn run(config: &Config, command: Subcommands) -> i32 {
-    match command {
-        Subcommands::Root(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::List(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::Resolve(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::GetOverload(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::Get(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::Create(cmd) => {
-            return run_builtin_command(&cmd, config);
-        }
-        Subcommands::External(args) => {
-            let cmd = external::Subcommand { args: args };
-            return run_builtin_command(&cmd, config);
-        }
-    }
-}
-
-fn run_builtin_command(cmd: &dyn BuiltInCommand, config: &Config) -> i32 {
-    match cmd.run(config) {
+    match run_subcommand(config, command) {
         Ok(return_code) => {
             return return_code;
         },

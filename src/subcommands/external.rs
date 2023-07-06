@@ -11,7 +11,7 @@ pub struct Subcommand {
 }
 
 
-impl super::BuiltInCommand for Subcommand {
+impl super::Subcommand for Subcommand {
     fn run(&self, config: &Config) -> GenericResult<i32> {
         let mut store = EnvironmentStore::new();
         let cmdgen = config.shell.compile(&store)?;
