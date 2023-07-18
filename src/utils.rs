@@ -72,3 +72,9 @@ pub fn expand_env(text: &str) -> String {
 
     return result;
 }
+
+pub fn trim_end(mut str: String) -> String {
+    let trimed = str.trim_end();
+    str.truncate(trimed.len());
+    str
+}

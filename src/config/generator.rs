@@ -1,6 +1,6 @@
 use std::fmt::Write;
 
-use crate::{store::Store, utils::{GenericResult, CommandGenerator}, template};
+use crate::{store::Store, utils::{GenericResult, CommandGenerator, trim_end}, template};
 use serde::{Deserialize, de::{Visitor, SeqAccess, self, Unexpected}};
 
 pub enum Generator {
@@ -94,7 +94,7 @@ impl Generator {
                 break;
             }
         }
-        Ok(buffer)
+        Ok(trim_end(buffer))
     }
 
     pub fn expand_without_shell<T: Store>(&self, store: &T) -> GenericResult<String> {
