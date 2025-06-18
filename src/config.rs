@@ -5,17 +5,27 @@ use std::io::prelude::*;
 use std::path::PathBuf;
 use toml;
 
-pub mod generator;
-pub mod shell;
-pub mod resolve;
-pub mod overload;
 pub mod behavior;
-pub mod parse;
-pub mod pattern;
 pub mod directory_condition;
 pub mod fields_definition;
+pub mod generator;
+pub mod overload;
+pub mod parse;
+pub mod pattern;
+pub mod resolve;
+pub mod shell;
 
-use self::{generator::Generator, shell::Shell, resolve::Resolve, overload::{Overloadable,  OverloadsContainer}, behavior::Behavior, parse::Parse, pattern::Pattern, directory_condition::DirectoryCondition, fields_definition::FieldsDefinition};
+use self::{
+    behavior::Behavior,
+    directory_condition::DirectoryCondition,
+    fields_definition::FieldsDefinition,
+    generator::Generator,
+    overload::{Overloadable, OverloadsContainer},
+    parse::Parse,
+    pattern::Pattern,
+    resolve::Resolve,
+    shell::Shell,
+};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -38,6 +48,8 @@ pub struct Core {
 pub struct Subcommands {
     pub get: Get,
     pub create: Create,
+    #[serde(rename = "move")]
+    pub mv: Move,
     #[serde(default)]
     pub list: List,
 }
@@ -56,6 +68,22 @@ impl Default for GetParams {
 }
 
 type Create = Get;
+
+pub type Move = Overloadable<MoveParams>;
+#[derive(Deserialize)]
+pub struct MoveParams {
+    #[serde(default = "behavior::nop")]
+    pub pre_command: Behavior,
+    pub command: Behavior,
+}
+impl Default for MoveParams {
+    fn default() -> Self {
+        Self {
+            pre_command: Default::default(),
+            command: Default::default(),
+        }
+    }
+}
 
 #[derive(Deserialize)]
 pub struct List {

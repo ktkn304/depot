@@ -19,6 +19,9 @@ get.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'git clon
 create.command = [ 'not-supported' ]
 create.overloads.git.command = [ 'shell', 'mkdir -p "$DEPOT_LOCAL_PATH"', 'cd "$DEPOT_LOCAL_PATH" && git init && git remote add origin "$DEPOT_REMOTE_RAW"', 'echo "$DEPOT_LOCAL_PATH"' ]
 
+move.command = [ 'not-supported' ]
+move.overloads.git.command = [ 'shell', 'mv "$DEPOT_SOURCE_LOCAL_PATH" "$DEPOT_LOCAL_PATH"', 'cd "$DEPOT_LOCAL_PATH" && git init ; git remote add origin "$DEPOT_REMOTE_RAW"', 'echo "$DEPOT_LOCAL_PATH"' ]
+
 [subcommands.list.project]
 condition = [
     { mode = 'exact', pattern = [ 'glob', '*/*/*' ] },

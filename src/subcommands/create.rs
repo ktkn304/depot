@@ -1,19 +1,18 @@
-use clap::Args;
 use crate::config::Config;
-use crate::store::{EnvironmentStore, Store};
+use crate::store::Store;
 use crate::utils;
 use crate::utils::GenericResult;
+use clap::Args;
 
 pub const ABOUT: &str = "create directory";
 
 #[derive(Args)]
 pub struct Subcommand {
-    address: String
+    address: String,
 }
 
 impl super::Subcommand for Subcommand {
-    fn run(&self, config: &Config) -> GenericResult<i32> {
-        let mut store = EnvironmentStore::new();
+    fn run(&self, config: &Config, mut store: impl Store) -> GenericResult<i32> {
         let overload = config.overloads.find_overload_name(&self.address)?;
         let cmdgen = config.shell.compile(&store)?;
         let remote_url = config.parse.parse_url(&self.address)?;
@@ -27,8 +26,11 @@ impl super::Subcommand for Subcommand {
         let path = utils::concat_path(&root_path, &rel_path);
         store.set_local_path(path, rel_path);
 
-        store.export_all();
-
-        config.subcommands.create.get_params(overload).command.execute(&cmdgen, &store)
+        config
+            .subcommands
+            .create
+            .get_params(overload)
+            .command
+            .execute(&cmdgen, &store)
     }
 }

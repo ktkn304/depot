@@ -2,6 +2,8 @@ use std::error::Error;
 use std::env;
 use std::path::Path;
 use std::process::Command;
+
+use crate::store::Store;
 pub type GenericError = Box<dyn Error + Sync + Send + 'static>;
 pub type GenericResult<T> = Result<T, GenericError>;
 
@@ -14,7 +16,7 @@ pub trait DirectoryMatcher {
 }
 
 pub trait CommandGenerator {
-    fn generate(&self) -> Command;
+    fn generate<T: Store>(&self, store: &T) -> Command;
 }
 
 pub trait Compilable<T> {

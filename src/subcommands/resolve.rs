@@ -1,8 +1,8 @@
-use clap::Args;
-use crate::config::Config;
 use crate::config::generator::Generator;
-use crate::store::{EnvironmentStore, Store};
+use crate::config::Config;
+use crate::store::Store;
 use crate::utils::{self, GenericResult};
+use clap::Args;
 
 pub const ABOUT: &str = "get stored directory path from url";
 
@@ -14,8 +14,7 @@ pub struct Subcommand {
 }
 
 impl super::Subcommand for Subcommand {
-    fn run(&self, config: &Config) -> GenericResult<i32> {
-        let mut store = EnvironmentStore::new();
+    fn run(&self, config: &Config, mut store: impl Store) -> GenericResult<i32> {
         let cmdgen = config.shell.compile(&store)?;
         let remote_url = config.parse.parse_url(&self.address)?;
         store.set_remote_raw(&self.address);

@@ -81,10 +81,10 @@ impl Generator {
         Ok(template::expand_template(store, template))
     }
 
-    fn execute_shell<T: CommandGenerator>(cmdgen: &T, commands: &Vec<String>) -> GenericResult<String> {
+    fn execute_shell<Tc: CommandGenerator, Ts: Store>(cmdgen: &Tc, store: &Ts, commands: &Vec<String>) -> GenericResult<String> {
         let mut buffer = String::new();
         for command in commands {
-            let output = cmdgen.generate()
+            let output = cmdgen.generate(store)
                 .arg(command)
                 .output()?;
             let code = output.status.code().unwrap_or(0);
@@ -109,7 +109,7 @@ impl Generator {
         match self {
             Generator::String(value) => Self::expand_string(value),
             Generator::Template(template) => Self::expand_template(store, template),
-            Generator::Shell(commands) => Self::execute_shell(cmdgen, commands),
+            Generator::Shell(commands) => Self::execute_shell(cmdgen, store, commands),
         }
     }
 }

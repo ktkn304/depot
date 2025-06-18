@@ -1,20 +1,23 @@
+use crate::{config::Config, store::Store, utils::GenericResult};
 use clap;
-use crate::{config::Config, utils::GenericResult};
 
-mod root;
-mod list;
-mod get;
 mod create;
-mod resolve;
-mod get_overload;
 mod external;
+mod get;
+mod get_overload;
+mod list;
+mod r#move;
+mod resolve;
+mod root;
 
 pub trait Subcommand {
-    fn run(&self, config: &Config) -> GenericResult<i32>;
+    fn run(&self, config: &Config, store: impl Store) -> GenericResult<i32>;
 }
 
 macro_rules! as_item {
-    ($i:item) => { $i };
+    ($i:item) => {
+        $i
+    };
 }
 
 macro_rules! define_subcommands_enum {
@@ -35,16 +38,16 @@ macro_rules! define_subcommands_enum {
 
 macro_rules! define_subcommands_run {
     ($(($name:ident, $mod:tt);)+) => {
-        fn run_subcommand(config: &Config, command: Subcommands) -> GenericResult<i32> {
+        fn run_subcommand(config: &Config, command: Subcommands, store: impl Store) -> GenericResult<i32> {
             match command {
                 $(
                     Subcommands::$name(cmd) => {
-                        cmd.run(config)
+                        cmd.run(config, store)
                     }
                 )+
                 Subcommands::External(args) => {
                     let cmd = external::Subcommand { args: args };
-                    cmd.run(config)
+                    cmd.run(config, store)
                 }
             }
         }
@@ -58,20 +61,21 @@ macro_rules! define_subcommands {
     );
 }
 
-define_subcommands!{
+define_subcommands! {
     (Root, root);
     (List, list);
     (Resolve, resolve);
     (GetOverload, get_overload);
     (Get, get);
     (Create, create);
+    (Move, r#move);
 }
 
-pub fn run(config: &Config, command: Subcommands) -> i32 {
-    match run_subcommand(config, command) {
+pub fn run(config: &Config, command: Subcommands, store: impl Store) -> i32 {
+    match run_subcommand(config, command, store) {
         Ok(return_code) => {
             return return_code;
-        },
+        }
         Err(err) => {
             eprintln!("{}", err);
             return 1;

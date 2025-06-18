@@ -1,11 +1,22 @@
-use serde::{Deserialize, de::{Visitor, self, SeqAccess, Unexpected}};
+use serde::{
+    de::{self, SeqAccess, Unexpected, Visitor},
+    Deserialize,
+};
 
-use crate::{utils::{GenericResult, CommandGenerator}, store::Store, template};
+use crate::{
+    store::Store,
+    template,
+    utils::{CommandGenerator, GenericResult},
+};
 
+pub fn nop() -> Behavior {
+    Behavior::Nop
+}
 
 pub enum Behavior {
     Template(String),
     Shell(Vec<String>),
+    Nop,
     NotSupported,
 }
 impl Default for Behavior {
@@ -34,8 +45,8 @@ impl<'de> Deserialize<'de> for Behavior {
             }
 
             fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-                where
-                    E: de::Error,
+            where
+                E: de::Error,
             {
                 Ok(Self::Value::Shell(vec![v]))
             }
@@ -64,6 +75,7 @@ impl<'de> Deserialize<'de> for Behavior {
                         }
                         Ok(Self::Value::Shell(commands))
                     }
+                    "nop" => Ok(Self::Value::Nop),
                     "not-supported" => Ok(Self::Value::NotSupported),
                     _ => Err(de::Error::invalid_value(Unexpected::Str(&method), &self)),
                 }
@@ -81,13 +93,19 @@ impl Behavior {
         Ok(0)
     }
 
-    fn execute_shell<T: CommandGenerator>(cmdgen: &T, commands: &Vec<String>) -> GenericResult<i32> {
+    fn execute_shell<Tc: CommandGenerator, Ts: Store>(
+        cmdgen: &Tc,
+        store: &Ts,
+        commands: &Vec<String>,
+    ) -> GenericResult<i32> {
         let mut last_code: i32 = 0;
         for command in commands {
-            last_code = cmdgen.generate()
+            last_code = cmdgen
+                .generate(store)
                 .arg(command)
                 .status()?
-                .code().unwrap_or(0);
+                .code()
+                .unwrap_or(0);
             if last_code != 0 {
                 break;
             }
@@ -95,15 +113,24 @@ impl Behavior {
         Ok(last_code)
     }
 
+    fn execute_nop() -> GenericResult<i32> {
+        Ok(0)
+    }
+
     fn execute_not_supported() -> GenericResult<i32> {
         println!("not supported");
         Ok(255)
     }
 
-    pub fn execute<Tc: CommandGenerator, Ts: Store>(&self, cmdgen: &Tc, store: &Ts) -> GenericResult<i32> {
+    pub fn execute<Tc: CommandGenerator, Ts: Store>(
+        &self,
+        cmdgen: &Tc,
+        store: &Ts,
+    ) -> GenericResult<i32> {
         match self {
             Behavior::Template(template) => Self::execute_template(store, template),
-            Behavior::Shell(commands) => Self::execute_shell(cmdgen, commands),
+            Behavior::Shell(commands) => Self::execute_shell(cmdgen, store, commands),
+            Behavior::Nop => Self::execute_nop(),
             Behavior::NotSupported => Self::execute_not_supported(),
         }
     }

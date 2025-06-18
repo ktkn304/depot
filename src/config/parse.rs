@@ -2,7 +2,7 @@ use regex::Regex;
 use serde::Deserialize;
 use url::Url;
 
-use crate::{utils::GenericResult};
+use crate::utils::GenericResult;
 
 #[derive(Deserialize)]
 pub struct Parse {

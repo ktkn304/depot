@@ -1,8 +1,11 @@
 use std::process::Command;
 
-use serde::{Deserialize};
+use serde::Deserialize;
 
-use crate::{store::Store, utils::{GenericResult, CommandGenerator}};
+use crate::{
+    store::Store,
+    utils::{CommandGenerator, GenericResult},
+};
 
 use super::generator::Generator;
 
@@ -40,9 +43,10 @@ pub struct CompiledShell {
     pub args: Vec<String>,
 }
 impl CommandGenerator for CompiledShell {
-    fn generate(&self) -> Command {
-        let mut result = Command::new(&self.path);
-        result.args(&self.args);
-        result
+    fn generate<T: Store>(&self, store: &T) -> Command {
+        let mut command = Command::new(&self.path);
+        command.envs(store.iter());
+        command.args(&self.args);
+        command
     }
 }

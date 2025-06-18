@@ -1,14 +1,14 @@
+use clap::Parser;
+use std::env;
 use std::path::PathBuf;
 use std::process;
-use std::env;
-use clap::Parser;
 
-mod subcommands;
 mod config;
-mod store;
-mod utils;
 mod error;
+mod store;
+mod subcommands;
 mod template;
+mod utils;
 
 #[derive(Parser)]
 #[clap(author, version, about, long_about = None)]
@@ -20,6 +20,9 @@ struct Cli {
     /// Turn debugging information on
     #[clap(short, long, parse(from_occurrences))]
     debug: usize,
+
+    #[clap(short = 'e', long = "reset_env", default_value_t = false)]
+    pub reset_environment: bool,
 
     #[clap(subcommand)]
     subcommand: subcommands::Subcommands,
@@ -43,6 +46,12 @@ fn main() {
         process::exit(1)
     });
 
-    let return_code = subcommands::run(&config, cli.subcommand);
+    let store = if cli.reset_environment {
+        store::EnvironmentStore::new_env()
+    } else {
+        store::EnvironmentStore::new_blank()
+    };
+
+    let return_code = subcommands::run(&config, cli.subcommand, store);
     process::exit(return_code);
 }

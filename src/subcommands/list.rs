@@ -1,31 +1,39 @@
-use std::path::{Path, PathBuf};
-use clap::Args;
 use crate::config::fields_definition::FieldsDefinition;
 use crate::config::generator::Generator;
 use crate::config::pattern::Pattern;
-use crate::error::{BuiltInCommandError, PathStringifyError};
 use crate::config::Config;
-use crate::store::{EnvironmentStore, Store};
-use crate::utils::{GenericResult, StringMatcher, DirectoryMatcher, Compilable, CommandGenerator};
+use crate::error::{BuiltInCommandError, PathStringifyError};
+use crate::store::Store;
+use crate::utils::{CommandGenerator, Compilable, DirectoryMatcher, GenericResult, StringMatcher};
+use clap::Args;
+use std::path::{Path, PathBuf};
 
 pub const ABOUT: &str = "list managed directory";
 
 #[derive(Args)]
 pub struct Subcommand {
     #[clap(short, long, use_value_delimiter = true, default_values_t = [ "path".to_owned() ])]
-    fields: Vec<String>
+    fields: Vec<String>,
 }
 
-struct FsVisitor<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> {
+struct FsVisitor<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher, Ts: Store> {
     root: PathBuf,
-    store: EnvironmentStore,
+    store: Ts,
     cmdgen: Tcg,
     excludes: Vec<Box<dyn StringMatcher>>,
     condition: Tdm,
     fields: Vec<&'a Generator>,
 }
-impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
-    pub fn new<Tc: Compilable<Tdm>>(root: &str, store: EnvironmentStore, cmdgen: Tcg, exclude_patterns: &Vec<Pattern>, condition: &Tc, fields_def: &'a FieldsDefinition, fields: &Vec<String>) -> GenericResult<Self> {
+impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher, Ts: Store> FsVisitor<'a, Tcg, Tdm, Ts> {
+    pub fn new<Tc: Compilable<Tdm>>(
+        root: &str,
+        store: Ts,
+        cmdgen: Tcg,
+        exclude_patterns: &Vec<Pattern>,
+        condition: &Tc,
+        fields_def: &'a FieldsDefinition,
+        fields: &Vec<String>,
+    ) -> GenericResult<Self> {
         let mut excludes: Vec<Box<dyn StringMatcher>> = Vec::new();
         for ptn in exclude_patterns {
             excludes.push(ptn.compile()?)
@@ -35,7 +43,10 @@ impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
             if let Some(def) = fields_def.get(field_name) {
                 generators.push(&def)
             } else {
-                return Err(Box::new(BuiltInCommandError::new(&format!("field name not found: {}", field_name))));
+                return Err(Box::new(BuiltInCommandError::new(&format!(
+                    "field name not found: {}",
+                    field_name
+                ))));
             }
         }
         if generators.is_empty() {
@@ -54,7 +65,8 @@ impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
     }
 
     fn convert_path_to_str(path: &Path) -> GenericResult<&str> {
-        path.to_str().ok_or(Box::new(PathStringifyError::new("convert path failed")))
+        path.to_str()
+            .ok_or(Box::new(PathStringifyError::new("convert path failed")))
     }
 
     fn accept_directory(&mut self, path: &Path) -> GenericResult<()> {
@@ -77,11 +89,11 @@ impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
         let path_str = Self::convert_path_to_str(path)?;
         let relpath = path.strip_prefix(&self.root)?;
         let relpath_str = Self::convert_path_to_str(relpath)?;
-        self.store.set_local_path(path_str.to_owned(), relpath_str.to_owned());
-        self.store.export_all();
+        self.store
+            .set_local_path(path_str.to_owned(), relpath_str.to_owned());
 
         let mut field_strs: Vec<String> = Vec::new();
-        
+
         for &field in &self.fields {
             match field.expand(&self.cmdgen, &self.store) {
                 Ok(v) => field_strs.push(v),
@@ -135,12 +147,19 @@ impl<'a, Tcg: CommandGenerator, Tdm: DirectoryMatcher> FsVisitor<'a, Tcg, Tdm> {
 }
 
 impl super::Subcommand for Subcommand {
-    fn run(&self, config: &Config) -> GenericResult<i32> {
-        let mut store = EnvironmentStore::new();
+    fn run(&self, config: &Config, mut store: impl Store) -> GenericResult<i32> {
         let cmdgen = config.shell.compile(&store)?;
         let root_path = config.core.root.expand(&cmdgen, &store)?;
         store.set_root_path(root_path.to_owned());
-        let mut visitor = FsVisitor::new(&root_path, store, cmdgen, &config.subcommands.list.project.excludes, &config.subcommands.list.project.condition, &config.subcommands.list.fields, &self.fields)?;
+        let mut visitor = FsVisitor::new(
+            &root_path,
+            store,
+            cmdgen,
+            &config.subcommands.list.project.excludes,
+            &config.subcommands.list.project.condition,
+            &config.subcommands.list.fields,
+            &self.fields,
+        )?;
         visitor.run()?;
         return Ok(0);
     }
